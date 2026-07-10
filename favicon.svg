@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#2383e2"/>
+  <!-- test tube body -->
+  <path d="M25 13 h14 v32 a7 7 0 0 1 -14 0 z" fill="#ffffff"/>
+  <!-- liquid -->
+  <path d="M25 33 h14 v12 a7 7 0 0 1 -14 0 z" fill="#f1c40f"/>
+  <!-- rim -->
+  <rect x="21.5" y="10" width="21" height="5.5" rx="2.75" fill="#ffffff"/>
+  <!-- bubbles -->
+  <circle cx="30" cy="39" r="1.6" fill="#ffffff" opacity="0.85"/>
+  <circle cx="34.5" cy="43.5" r="1.15" fill="#ffffff" opacity="0.85"/>
+</svg>
