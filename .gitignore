@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# your personal notes & tasks — not tracked by default
+notebook.db
