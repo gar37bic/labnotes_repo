@@ -12,7 +12,10 @@
       "Bash(gh --version)",
       "Bash(gh auth *)",
       "Bash(git rm *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(cd /Users/shuai/Desktop/Project/Notes *)",
+      "Bash(pdftotext -q \"日记/20240302.note.pdf\" -)",
+      "Bash(git push *)"
     ]
   }
 }

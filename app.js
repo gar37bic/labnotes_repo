@@ -37,7 +37,12 @@ function decodeB64Utf8(b64) {
 function guessMime(path) {
   const ext = path.split(".").pop().toLowerCase();
   return { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
-           webp: "image/webp", svg: "image/svg+xml" }[ext] || "application/octet-stream";
+           webp: "image/webp", svg: "image/svg+xml", pdf: "application/pdf" }[ext] || "application/octet-stream";
+}
+function b64ToBlob(b64, mime) {
+  const bin = atob(b64.replace(/\s/g, ""));
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
 }
 
 /* ---------------- cultivation (修仙) system ---------------- */
@@ -158,6 +163,45 @@ const gh = {
   async getImageDataUrl(path) {
     const r = await this.api(this.contents(path));
     return `data:${guessMime(path)};base64,${r.content.replace(/\s/g, "")}`;
+  },
+
+  async getFileB64(path) {
+    const r = await this.api(this.contents(path));
+    return r.content.replace(/\s/g, "");
+  },
+
+  /* commit many files (binary or text) in ONE commit via the Git Data API */
+  async commitFiles(files, message, onProgress) {
+    const { owner, repo } = this.cfg;
+    const info = await this.api(`/repos/${owner}/${repo}`);
+    const branch = info.default_branch || "main";
+    const ref = await this.api(`/repos/${owner}/${repo}/git/ref/heads/${branch}`);
+    const headSha = ref.object.sha;
+    const headCommit = await this.api(`/repos/${owner}/${repo}/git/commits/${headSha}`);
+    const tree = [];
+    let done = 0;
+    for (const f of files) {
+      const blob = await this.api(`/repos/${owner}/${repo}/git/blobs`, {
+        method: "POST",
+        body: JSON.stringify({ content: f.contentB64, encoding: "base64" }),
+      });
+      tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
+      if (onProgress) onProgress(++done, files.length);
+    }
+    const newTree = await this.api(`/repos/${owner}/${repo}/git/trees`, {
+      method: "POST",
+      body: JSON.stringify({ base_tree: headCommit.tree.sha, tree }),
+    });
+    const commit = await this.api(`/repos/${owner}/${repo}/git/commits`, {
+      method: "POST",
+      body: JSON.stringify({ message, tree: newTree.sha, parents: [headSha] }),
+    });
+    await this.api(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+      method: "PATCH",
+      body: JSON.stringify({ sha: commit.sha }),
+    });
+    this.sha = null; // db.json sha changed; force re-read next time
+    return commit.sha;
   },
 };
 
@@ -589,6 +633,7 @@ function setMode(mode) {
     const html = marked.parse($("#note-content").value, { breaks: true });
     el.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : html;
     resolveImages(el);
+    resolveAttachments(el);
   } else {
     autoGrow();
   }
@@ -598,6 +643,27 @@ function autoGrow() {
   const ta = $("#note-content");
   ta.style.height = "auto";
   ta.style.height = Math.max(ta.scrollHeight, window.innerHeight * 0.6) + "px";
+}
+
+/* rewrite links to attachments/… so they fetch from the private repo and open */
+function resolveAttachments(container) {
+  for (const a of container.querySelectorAll("a")) {
+    const href = a.getAttribute("href") || "";
+    if (!href.startsWith("attachments/")) continue;
+    a.onclick = async (e) => {
+      e.preventDefault();
+      a.textContent = a.textContent.replace(/ \(加载中…\)$/, "") + " (加载中…)";
+      try {
+        const b64 = await gh.getFileB64(href);
+        const url = URL.createObjectURL(b64ToBlob(b64, guessMime(href)));
+        window.open(url, "_blank");
+      } catch (err) {
+        alert("无法加载附件：" + err.message);
+      } finally {
+        a.textContent = a.textContent.replace(/ \(加载中…\)$/, "");
+      }
+    };
+  }
 }
 
 const imageCache = new Map();
@@ -797,6 +863,109 @@ async function uploadAndInsert(file) {
   }
 }
 
+/* ---------------- import from disk (Archive folder) ---------------- */
+
+function readFileB64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+function stripTitle(fname) {
+  return fname.replace(/\.(md|txt|sh)$/i, "").replace(/\.note\.pdf$/i, "").replace(/\.pdf$/i, "");
+}
+function ensureFolderChain(path) {
+  for (const p of ancestorsOf(path)) if (!DB.folders.includes(p)) DB.folders.push(p);
+}
+
+async function runImport(fileList) {
+  const files = [...fileList];
+  if (!files.length) return;
+
+  // plan the work first
+  const plan = { text: [], pdf: [] };
+  for (const f of files) {
+    const rel = (f.webkitRelativePath || f.name).split("/");
+    rel.shift(); // drop the selected top folder (e.g. "Archive")
+    const fname = rel.pop();
+    if (!fname) continue;
+    const folder = rel.join("/") || "General";
+    const ext = fname.split(".").pop().toLowerCase();
+    if (["md", "txt", "sh"].includes(ext)) plan.text.push({ f, fname, folder, ext });
+    else if (ext === "pdf" && (f.webkitRelativePath || "").includes("My proposals"))
+      plan.pdf.push({ f, fname });
+  }
+  if (!plan.text.length && !plan.pdf.length) {
+    alert("没找到可导入的文件。请选择包含 .md/.sh/.txt 或 My proposals PDF 的 Archive 文件夹。");
+    return;
+  }
+  if (!confirm(`将导入 ${plan.text.length} 条文本笔记和 ${plan.pdf.length} 个 PDF 附件到 ${gh.cfg.owner}/${gh.cfg.repo}。\n已存在的同名笔记会跳过。继续？`))
+    return;
+
+  const existing = new Set(DB.notes.map((n) => (n.notebook || "") + " " + n.title));
+  const commitFiles = [];
+  const ts = nowStr();
+  let textCount = 0, pdfCount = 0, skipped = 0, idx = 0;
+
+  setStatus("导入中：读取文本…");
+  for (const item of plan.text) {
+    const title = stripTitle(item.fname);
+    const key = item.folder + " " + title;
+    if (existing.has(key)) { skipped++; continue; }
+    existing.add(key);
+    let content = await item.f.text();
+    if (item.ext === "sh") content = "```bash\n" + content.replace(/```/g, "``​`") + "\n```";
+    DB.notes.push({ id: DB.seq++, title, content, notebook: item.folder, pinned: 0, created_at: ts, updated_at: ts });
+    ensureFolderChain(item.folder);
+    textCount++;
+  }
+
+  for (const item of plan.pdf) {
+    const title = stripTitle(item.fname);
+    const key = "My proposals " + title;
+    if (existing.has(key)) { skipped++; continue; }
+    existing.add(key);
+    setStatus(`导入中：读取 PDF ${++idx}/${plan.pdf.length}…`);
+    const b64 = await readFileB64(item.f);
+    const safe = item.fname.replace(/[^\w.\-]/g, "_");
+    const path = `attachments/${tsStamp()}_${idx}_${safe}`;
+    commitFiles.push({ path, contentB64: b64 });
+    DB.notes.push({
+      id: DB.seq++, title, notebook: "My proposals", pinned: 0, created_at: ts, updated_at: ts,
+      content: `📄 **${title}**\n\n[打开 PDF](${path})\n\n> 从 Archive 导入的手写记录。`,
+    });
+    ensureFolderChain("My proposals");
+    pdfCount++;
+  }
+
+  if (textCount === 0 && pdfCount === 0) {
+    setStatus("");
+    toast(`没有新内容需要导入（跳过 ${skipped} 条已存在）`, "xp");
+    return;
+  }
+
+  // add the updated db.json to the same commit
+  commitFiles.push({ path: "db.json", contentB64: encodeB64Utf8(JSON.stringify(DB, null, 2)) });
+
+  try {
+    setStatus("提交到 GitHub…");
+    await gh.commitFiles(
+      commitFiles,
+      `Import from Archive: ${textCount} notes, ${pdfCount} PDFs`,
+      (d, t) => setStatus(`上传附件 ${d}/${t}…`)
+    );
+    toast(`导入完成：${textCount} 条笔记 · ${pdfCount} 个 PDF` + (skipped ? ` · 跳过 ${skipped}` : ""), "up");
+    await boot(); // reload from the fresh commit
+  } catch (e) {
+    console.error(e);
+    setStatus("导入失败");
+    alert("导入失败：" + e.message + "\n（未提交的更改不会保存，可重试。）");
+    await boot();
+  }
+}
+
 /* ---------------- event wiring ---------------- */
 
 function wireEvents() {
@@ -809,6 +978,8 @@ function wireEvents() {
   $("#new-note").onclick = newNote;
   $("#empty-new").onclick = newNote;
   $("#new-folder").onclick = () => createFolder("");
+  $("#import-btn").onclick = () => $("#import-input").click();
+  $("#import-input").onchange = (e) => { runImport(e.target.files); e.target.value = ""; };
   $("#nav-tasks").onclick = () => {
     state.currentId = null;
     showView("tasks");

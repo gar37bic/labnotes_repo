@@ -4,3 +4,7 @@ __pycache__/
 
 # leftover from the old local Flask version (recoverable in git history)
 notebook.db
+
+# private source records — never publish to the app repo
+Archive/
+labnotes-import*.json
