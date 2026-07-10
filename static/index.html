@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabNotes</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ======================= Sidebar ======================= -->
+  <aside id="sidebar">
+    <div class="side-header">
+      <span class="logo">🧪 LabNotes</span>
+    </div>
+
+    <div class="side-search">
+      <input id="search" type="search" placeholder="Search notes…" autocomplete="off">
+    </div>
+
+    <nav class="side-nav">
+      <button id="nav-tasks" class="nav-item">✅ Tasks <span id="task-count" class="count"></span></button>
+      <button id="new-note" class="nav-item accent">＋ New note</button>
+    </nav>
+
+    <div id="note-tree" class="note-tree"></div>
+
+    <div class="side-footer">local · single user</div>
+  </aside>
+
+  <!-- ======================= Note editor ======================= -->
+  <main id="note-view" class="hidden">
+    <div class="note-toolbar">
+      <input id="notebook-input" class="notebook-input" title="Notebook (folder)" placeholder="Notebook">
+      <div class="spacer"></div>
+      <button id="pin-btn" class="tool-btn" title="Pin note">📌</button>
+      <button id="mode-edit" class="tool-btn mode active">Edit</button>
+      <button id="mode-preview" class="tool-btn mode">Preview</button>
+      <button id="delete-note" class="tool-btn danger" title="Delete note">🗑</button>
+    </div>
+
+    <div class="note-scroll">
+      <input id="note-title" class="note-title" placeholder="Untitled">
+      <div id="note-meta" class="note-meta"></div>
+      <textarea id="note-content" class="note-content" placeholder="Write in Markdown… (## heading, **bold**, - list, - [ ] todo, | tables |, ```code```)"></textarea>
+      <article id="note-preview" class="note-preview markdown hidden"></article>
+    </div>
+    <div id="save-status" class="save-status"></div>
+  </main>
+
+  <!-- ======================= Tasks view ======================= -->
+  <main id="tasks-view" class="hidden">
+    <div class="tasks-scroll">
+      <h1 class="tasks-h1">✅ Tasks</h1>
+      <form id="task-form" class="task-form">
+        <input id="task-title" placeholder="Add a task, e.g. “Run western blot for sample 12”" autocomplete="off" required>
+        <input id="task-due" type="date" title="Due date">
+        <select id="task-priority" title="Priority">
+          <option value="low">Low</option>
+          <option value="normal" selected>Normal</option>
+          <option value="high">High</option>
+        </select>
+        <button type="submit">Add</button>
+      </form>
+      <div id="task-groups"></div>
+    </div>
+  </main>
+
+  <!-- ======================= Empty state ======================= -->
+  <main id="empty-view">
+    <div class="empty-box">
+      <div class="empty-emoji">📓</div>
+      <p>Select a note on the left, or create a new one.</p>
+      <button id="empty-new" class="big-btn">＋ New note</button>
+    </div>
+  </main>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
