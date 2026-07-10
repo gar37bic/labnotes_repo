@@ -8,7 +8,10 @@
       "Bash(lsof -ti:5099)",
       "Bash(xargs kill -9)",
       "Bash(rm -f /Users/shuai/Desktop/Project/Notes/static/uploads/*_dot.png; ls /Users/shuai/Desktop/Project/Notes/static/uploads/ 2>/dev/null || echo \"\\(uploads empty\\)\")",
-      "Bash(git commit -qm 'Add dark mode, notebook drag-reorder, image upload, .md export, checklist-to-tasks *)"
+      "Bash(git commit -qm 'Add dark mode, notebook drag-reorder, image upload, .md export, checklist-to-tasks *)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git rm *)"
     ]
   }
 }

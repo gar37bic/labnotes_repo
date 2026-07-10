@@ -219,3 +219,50 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: r
   margin-top: 10px; background: var(--accent); color: #fff; border: none;
   border-radius: 8px; padding: 10px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
 }
+
+/* ---------- setup / connect gate ---------- */
+.setup-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--side-bg); padding: 20px;
+}
+.setup-card {
+  width: 100%; max-width: 440px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 30px 30px 26px; box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+}
+.setup-card h1 { margin: 0 0 6px; font-size: 24px; }
+.setup-sub { margin: 0 0 20px; font-size: 13.5px; color: var(--text-dim); line-height: 1.5; }
+.setup-card label {
+  display: block; font-size: 12.5px; font-weight: 600; margin: 14px 0 5px;
+}
+.setup-card label span { font-weight: 400; color: var(--text-dim); }
+.setup-card input {
+  width: 100%; padding: 9px 11px; font-size: 14px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); outline: none;
+}
+.setup-card input:focus { border-color: var(--accent); }
+.setup-btn {
+  width: 100%; margin-top: 20px; padding: 11px;
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  font-size: 14.5px; font-weight: 600; cursor: pointer;
+}
+.setup-btn:hover { filter: brightness(1.08); }
+.setup-btn:disabled { opacity: 0.6; cursor: default; }
+.setup-msg { margin-top: 12px; font-size: 13px; min-height: 18px; }
+.setup-msg.err { color: var(--danger); }
+.setup-msg.ok { color: var(--accent); }
+.setup-help { margin-top: 18px; font-size: 12.5px; color: var(--text-dim); }
+.setup-help summary { cursor: pointer; color: var(--accent); }
+.setup-help ol { margin: 10px 0; padding-left: 20px; line-height: 1.6; }
+.setup-help code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+
+/* ---------- settings button in footer ---------- */
+.side-footer { display: flex; align-items: center; }
+#sync-state { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-btn {
+  border: none; background: none; cursor: pointer; color: var(--text-dim);
+  font-size: 15px; padding: 2px 6px; border-radius: 6px; line-height: 1;
+}
+.settings-btn:hover { background: var(--hover); }

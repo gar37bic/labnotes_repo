@@ -4,7 +4,7 @@
     {
       "name": "labnotes",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["app.py"],
+      "runtimeArgs": ["-m", "http.server", "5099"],
       "port": 5099
     }
   ]

@@ -4,13 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LabNotes</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
-<div id="app">
 
-  <!-- ======================= Sidebar ======================= -->
+<!-- ======================= Setup / connect gate ======================= -->
+<div id="setup" class="setup-overlay hidden">
+  <div class="setup-card">
+    <h1>🧪 LabNotes</h1>
+    <p class="setup-sub">Connect to the private GitHub repo where your notes live.
+       Everything is stored there — you can open this page from any computer.</p>
+
+    <label>GitHub username <span>(the repo owner)</span></label>
+    <input id="cfg-owner" placeholder="e.g. shuai" autocomplete="off">
+
+    <label>Data repository name <span>(private repo you created)</span></label>
+    <input id="cfg-repo" placeholder="labnotes-data" autocomplete="off">
+
+    <label>Access token <span>(fine-grained, Contents: Read &amp; Write)</span></label>
+    <input id="cfg-token" type="password" placeholder="github_pat_…" autocomplete="off">
+
+    <button id="cfg-connect" class="setup-btn">Connect</button>
+    <div id="cfg-msg" class="setup-msg"></div>
+
+    <details class="setup-help">
+      <summary>How do I get these? (one-time setup)</summary>
+      <ol>
+        <li>Create a <b>private</b> repo on GitHub, e.g. <code>labnotes-data</code> (leave it empty).</li>
+        <li>Go to GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> → Generate.</li>
+        <li>Under <b>Repository access</b> pick “Only select repositories” → your data repo.</li>
+        <li>Under <b>Permissions → Repository → Contents</b> choose <b>Read and write</b>.</li>
+        <li>Generate, copy the <code>github_pat_…</code> token, and paste it above.</li>
+      </ol>
+      <p>The token is stored only in this browser (like a saved password). It’s never sent anywhere except GitHub.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ======================= Main app ======================= -->
+<div id="app" class="hidden">
+
   <aside id="sidebar">
     <div class="side-header">
       <span class="logo">🧪 LabNotes</span>
@@ -28,10 +63,12 @@
 
     <div id="note-tree" class="note-tree"></div>
 
-    <div class="side-footer">local · single user</div>
+    <div class="side-footer">
+      <span id="sync-state">local · single user</span>
+      <button id="settings-btn" class="settings-btn" title="Settings / sign out">⚙</button>
+    </div>
   </aside>
 
-  <!-- ======================= Note editor ======================= -->
   <main id="note-view" class="hidden">
     <div class="note-toolbar">
       <input id="notebook-input" class="notebook-input" title="Notebook (folder)" placeholder="Notebook">
@@ -54,7 +91,6 @@
     <div id="save-status" class="save-status"></div>
   </main>
 
-  <!-- ======================= Tasks view ======================= -->
   <main id="tasks-view" class="hidden">
     <div class="tasks-scroll">
       <h1 class="tasks-h1">✅ Tasks</h1>
@@ -72,7 +108,6 @@
     </div>
   </main>
 
-  <!-- ======================= Empty state ======================= -->
   <main id="empty-view">
     <div class="empty-box">
       <div class="empty-emoji">📓</div>
@@ -82,6 +117,7 @@
   </main>
 
 </div>
-<script src="/static/app.js"></script>
+
+<script src="app.js"></script>
 </body>
 </html>

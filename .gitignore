@@ -2,8 +2,5 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# your personal notes & tasks — not tracked by default
+# leftover from the old local Flask version (recoverable in git history)
 notebook.db
-
-# uploaded images
-static/uploads/
