@@ -59,6 +59,7 @@
     <nav class="side-nav">
       <button id="nav-tasks" class="nav-item">✅ Tasks <span id="task-count" class="count"></span></button>
       <button id="new-note" class="nav-item accent">＋ New note</button>
+      <button id="new-folder" class="nav-item">📁 New folder</button>
     </nav>
 
     <div id="note-tree" class="note-tree"></div>
@@ -116,7 +117,31 @@
     </div>
   </main>
 
+  <!-- ======================= Character / cultivation panel ======================= -->
+  <aside id="character">
+    <button id="char-expand" class="char-expand" title="展开">🧙</button>
+    <div class="char-head">
+      <span class="char-title">🗡 修仙之路</span>
+      <button id="char-toggle" class="char-toggle" title="收起">›</button>
+    </div>
+    <div class="char-body">
+      <div id="char-avatar" class="char-avatar">🌱</div>
+      <div id="char-realm" class="char-realm">炼气期</div>
+      <div id="char-stage" class="char-stage">初期</div>
+      <div class="char-bar"><div id="char-bar-fill" class="char-bar-fill"></div></div>
+      <div id="char-xp" class="char-xp">0 / 100 灵气</div>
+      <div class="char-stats">
+        <div><span id="char-total">0</span><label>总修为</label></div>
+        <div><span id="char-done">0</span><label>已完成</label></div>
+      </div>
+      <div class="char-ladder" id="char-ladder"></div>
+      <p class="char-hint">完成任务获得灵气<br>低 = 5 · 普通 = 10 · 高 = 20</p>
+    </div>
+  </aside>
+
 </div>
+
+<div id="toasts"></div>
 
 <script src="app.js"></script>
 </body>

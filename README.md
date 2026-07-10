@@ -15,10 +15,15 @@ so you can open it from any computer and your data follows you.
 ## Features
 
 - Markdown notes with live preview (headings, tables, code, checklists, images)
-- Notebooks (folders) — drag the sidebar headings to reorder
+- **Nested folders** — build a tree of notebooks; expand/collapse, create subfolders
+  (＋), rename (✏), delete empty ones (🗑). Drag a note onto a folder to move it, or
+  drag a folder onto another to re-parent it.
 - Dark mode, full-text search, pinned notes
 - Tasks with due dates & priority, grouped into Overdue / Today / Upcoming / Done
 - `- [ ] todo` lines in a note automatically become linked tasks
+- **修仙 cultivation rewards** — completing tasks earns 灵气 (low 5 / normal 10 / high 20)
+  and advances your character through 炼气 → 筑基 → 金丹 → 元婴 → 化神 → 合体 → 大乘 →
+  仙人, shown in the character panel on the right (collapsible). Breakthroughs pop a toast.
 - Paste / drag-drop / upload images; export any note as `.md`
 - Autosave (`Cmd+S` to force-save, `Cmd+E` to toggle preview)
 
