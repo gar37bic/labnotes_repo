@@ -6,7 +6,15 @@ Single user, runs locally, no accounts, no cloud — your data stays in one SQLi
 ## Features
 
 - **Markdown notes** with live preview (headings, tables, code blocks, checklists, images)
-- **Notebooks** — group notes into folders (e.g. `CRISPR screen`, `Ideas`, `Meetings`)
+- **Notebooks** — group notes into folders (e.g. `CRISPR screen`, `Ideas`, `Meetings`);
+  **drag the notebook headings** in the sidebar to reorder them
+- **Dark mode** — toggle with the 🌙 / ☀️ button; your choice is remembered
+- **Images** — paste from clipboard, drag-and-drop, or use the 🖼 button; files are
+  stored under `static/uploads/`
+- **Export** any note as a `.md` file with the ⬇︎ button
+- **Checklist → tasks** — any `- [ ] todo` line in a note automatically becomes a real
+  task, linked back to the note (the note stays the source of truth; edit the note to
+  change or remove them)
 - **Pin** important notes to the top, **full-text search** across all notes
 - **Tasks** with due dates and priority, auto-grouped into Overdue / Today / Upcoming / Done
 - **Autosave** — just type; `Cmd+S` to force save, `Cmd+E` to toggle edit/preview

@@ -14,6 +14,7 @@
   <aside id="sidebar">
     <div class="side-header">
       <span class="logo">🧪 LabNotes</span>
+      <button id="theme-btn" class="theme-btn" title="Toggle dark mode">🌙</button>
     </div>
 
     <div class="side-search">
@@ -35,10 +36,13 @@
     <div class="note-toolbar">
       <input id="notebook-input" class="notebook-input" title="Notebook (folder)" placeholder="Notebook">
       <div class="spacer"></div>
+      <button id="img-btn" class="tool-btn" title="Insert image">🖼</button>
+      <button id="export-btn" class="tool-btn" title="Export as .md">⬇︎</button>
       <button id="pin-btn" class="tool-btn" title="Pin note">📌</button>
       <button id="mode-edit" class="tool-btn mode active">Edit</button>
       <button id="mode-preview" class="tool-btn mode">Preview</button>
       <button id="delete-note" class="tool-btn danger" title="Delete note">🗑</button>
+      <input id="img-file" type="file" accept="image/*" hidden multiple>
     </div>
 
     <div class="note-scroll">

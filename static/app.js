@@ -24,29 +24,61 @@ const api = {
   createNote: (body) => api.req("/api/notes", { method: "POST", body: JSON.stringify(body) }),
   updateNote: (id, body) => api.req("/api/notes/" + id, { method: "PUT", body: JSON.stringify(body) }),
   deleteNote: (id) => api.req("/api/notes/" + id, { method: "DELETE" }),
+  listNotebooks: () => api.req("/api/notebooks"),
+  setNotebookOrder: (order) => api.req("/api/notebooks/order", { method: "PUT", body: JSON.stringify({ order }) }),
   listTasks: () => api.req("/api/tasks"),
   createTask: (body) => api.req("/api/tasks", { method: "POST", body: JSON.stringify(body) }),
   updateTask: (id, body) => api.req("/api/tasks/" + id, { method: "PUT", body: JSON.stringify(body) }),
   deleteTask: (id) => api.req("/api/tasks/" + id, { method: "DELETE" }),
+  syncTasks: (id, items) => api.req("/api/notes/" + id + "/sync-tasks", { method: "POST", body: JSON.stringify({ items }) }),
+  async upload(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+};
+
+/* ---------------- theme ---------------- */
+
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("#theme-btn").textContent = t === "dark" ? "☀️" : "🌙";
+}
+applyTheme(localStorage.getItem("theme") || "light");
+$("#theme-btn").onclick = () => {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", t);
+  applyTheme(t);
 };
 
 /* ---------------- sidebar ---------------- */
 
 async function refreshSidebar() {
   const q = $("#search").value.trim();
-  state.notes = await api.listNotes(q);
+  const [notes, notebooks] = await Promise.all([api.listNotes(q), api.listNotebooks()]);
+  state.notes = notes;
   const tree = $("#note-tree");
   tree.innerHTML = "";
 
   const groups = {};
   for (const n of state.notes) (groups[n.notebook] ||= []).push(n);
 
-  for (const nb of Object.keys(groups).sort()) {
+  // order groups by the saved notebook order; unknown notebooks fall to the end
+  const orderList = notebooks.map((x) => x.notebook);
+  const rank = (nb) => { const i = orderList.indexOf(nb); return i === -1 ? 1e9 : i; };
+  const names = Object.keys(groups).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+
+  for (const nb of names) {
     const g = document.createElement("div");
     g.className = "nb-group";
     const h = document.createElement("div");
     h.className = "nb-name";
     h.textContent = nb;
+    h.draggable = true;
+    h.dataset.nb = nb;
+    attachNotebookDrag(h, nb);
     g.appendChild(h);
     for (const n of groups[nb]) {
       const b = document.createElement("button");
@@ -62,6 +94,32 @@ async function refreshSidebar() {
     tree.innerHTML = `<div style="padding:12px;font-size:13px;color:var(--text-dim)">
       ${q ? "No matches." : "No notes yet."}</div>`;
   }
+}
+
+let dragNb = null;
+function attachNotebookDrag(h, nb) {
+  h.addEventListener("dragstart", (e) => {
+    dragNb = nb;
+    h.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+  });
+  h.addEventListener("dragend", () => h.classList.remove("dragging"));
+  h.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (dragNb && dragNb !== nb) h.classList.add("drop-target");
+  });
+  h.addEventListener("dragleave", () => h.classList.remove("drop-target"));
+  h.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    h.classList.remove("drop-target");
+    if (!dragNb || dragNb === nb) return;
+    const names = [...document.querySelectorAll(".nb-name")].map((el) => el.dataset.nb);
+    names.splice(names.indexOf(dragNb), 1);
+    names.splice(names.indexOf(nb), 0, dragNb);
+    dragNb = null;
+    await api.setNotebookOrder(names);
+    refreshSidebar();
+  });
 }
 
 async function refreshTaskCount() {
@@ -110,14 +168,28 @@ function scheduleSave() {
 
 async function saveNote() {
   if (state.currentId == null) return;
+  const content = $("#note-content").value;
   const n = await api.updateNote(state.currentId, {
     title: $("#note-title").value || "Untitled",
-    content: $("#note-content").value,
+    content,
     notebook: $("#notebook-input").value.trim() || "General",
   });
+  // turn markdown checklist items into real tasks (one-way: note is source of truth)
+  await api.syncTasks(state.currentId, extractChecklist(content));
   $("#note-meta").textContent = `Created ${n.created_at} · Updated ${n.updated_at}`;
   $("#save-status").textContent = "Saved ✓";
   refreshSidebar();
+  refreshTaskCount();
+}
+
+function extractChecklist(text) {
+  const items = [];
+  const re = /^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$/;
+  for (const line of text.split("\n")) {
+    const m = line.match(re);
+    if (m) items.push({ title: m[2], done: m[1].toLowerCase() === "x" });
+  }
+  return items;
 }
 
 function setMode(mode) {
@@ -215,6 +287,14 @@ function taskRow(t) {
     due.textContent = "📅 " + t.due_date;
     row.appendChild(due);
   }
+  if (t.note_id && t.note_title) {
+    const src = document.createElement("button");
+    src.className = "t-src";
+    src.textContent = "↩ " + t.note_title;
+    src.title = "Open source note";
+    src.onclick = () => openNote(t.note_id);
+    row.appendChild(src);
+  }
 
   const del = document.createElement("button");
   del.className = "t-del";
@@ -262,6 +342,65 @@ $("#delete-note").onclick = async () => {
 
 $("#mode-edit").onclick = () => setMode("edit");
 $("#mode-preview").onclick = () => setMode("preview");
+
+/* ---- image upload: button, paste, drag-drop ---- */
+function insertAtCursor(ta, text) {
+  const s = ta.selectionStart ?? ta.value.length;
+  const e = ta.selectionEnd ?? ta.value.length;
+  ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + text.length;
+  ta.focus();
+}
+
+async function uploadAndInsert(file) {
+  $("#save-status").textContent = "Uploading image…";
+  try {
+    const { url } = await api.upload(file);
+    insertAtCursor($("#note-content"), `\n![${file.name || "image"}](${url})\n`);
+    scheduleSave();
+    autoGrow();
+  } catch (err) {
+    $("#save-status").textContent = "Upload failed";
+  }
+}
+
+$("#img-btn").onclick = () => $("#img-file").click();
+$("#img-file").onchange = (e) => {
+  [...e.target.files].forEach(uploadAndInsert);
+  e.target.value = "";
+};
+
+$("#note-content").addEventListener("paste", (e) => {
+  for (const it of e.clipboardData?.items || []) {
+    if (it.type.startsWith("image/")) {
+      e.preventDefault();
+      uploadAndInsert(it.getAsFile());
+    }
+  }
+});
+$("#note-content").addEventListener("dragover", (e) => {
+  if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+});
+$("#note-content").addEventListener("drop", (e) => {
+  const imgs = [...(e.dataTransfer?.files || [])].filter((f) => f.type.startsWith("image/"));
+  if (imgs.length) {
+    e.preventDefault();
+    imgs.forEach(uploadAndInsert);
+  }
+});
+
+/* ---- export current note as .md ---- */
+$("#export-btn").onclick = () => {
+  if (state.currentId == null) return;
+  const title = $("#note-title").value || "Untitled";
+  const md = `# ${title}\n\n${$("#note-content").value}\n`;
+  const blob = new Blob([md], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = title.replace(/[\\/:*?"<>|]/g, "_") + ".md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 
 $("#task-form").addEventListener("submit", async (e) => {
   e.preventDefault();

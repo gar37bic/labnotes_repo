@@ -4,3 +4,6 @@ __pycache__/
 
 # your personal notes & tasks — not tracked by default
 notebook.db
+
+# uploaded images
+static/uploads/
