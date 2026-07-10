@@ -407,7 +407,7 @@ function folderRow(node, depth, forceExpand) {
   acts.append(
     mkActBtn("＋", "New subfolder", (e) => { e.stopPropagation(); createFolder(node.path); }),
     mkActBtn("✏", "Rename", (e) => { e.stopPropagation(); renamePrompt(node); }),
-    mkActBtn("🗑", "Delete (empty only)", (e) => { e.stopPropagation(); deleteFolder(node); })
+    mkActBtn("🗑", "Delete folder + all its notes", (e) => { e.stopPropagation(); deleteFolder(node); })
   );
 
   row.append(tri, nameEl, count, acts);
@@ -481,14 +481,36 @@ function renamePrompt(node) {
 }
 
 function deleteFolder(node) {
-  if (subtreeNoteCount(node) > 0 || Object.keys(node.children).length > 0) {
-    alert("This folder isn't empty. Move or delete its notes/subfolders first.");
-    return;
-  }
-  DB.folders = DB.folders.filter((p) => p !== node.path);
-  if (state.activeFolder === node.path) state.activeFolder = "General";
+  const prefix = node.path + "/";
+  const isUnder = (p) => p === node.path || (p || "").startsWith(prefix);
+  const notes = DB.notes.filter((n) => isUnder(n.notebook || "General"));
+  const subFolders = Object.keys(node.children).length;
+
+  const msg = notes.length
+    ? `删除文件夹「${node.path}」及其中 ${notes.length} 条笔记` +
+      (subFolders ? "（含子文件夹）" : "") +
+      "？\n此操作不可恢复（但可从 GitHub 数据仓库的历史提交中找回）。"
+    : `删除空文件夹「${node.path}」？`;
+  if (!confirm(msg)) return;
+
+  const ids = new Set(notes.map((n) => n.id));
+  DB.notes = DB.notes.filter((n) => !ids.has(n.id));
+  // drop deleted notes' checklist tasks; unlink manual tasks that pointed at them
+  DB.tasks = DB.tasks.filter((t) => !(ids.has(t.note_id) && t.source === "checklist"));
+  DB.tasks.forEach((t) => { if (ids.has(t.note_id)) t.note_id = null; });
+  // remove this folder and every descendant from folder list / order / collapse state
+  DB.folders = DB.folders.filter((p) => !isUnder(p));
+  DB.notebook_order = DB.notebook_order.filter((p) => !isUnder(p));
+  for (const p of [...collapsed]) if (isUnder(p)) collapsed.delete(p);
+  saveCollapsed();
+  // fix up open note / active folder if they were inside
+  if (state.currentId != null && ids.has(state.currentId)) { state.currentId = null; showView("empty"); }
+  if (isUnder(state.activeFolder)) state.activeFolder = "General";
+
   refreshSidebar();
-  persist("Delete folder");
+  refreshTaskCount();
+  renderCharacter();
+  persist(`Delete folder ${node.path} (${notes.length} notes)`);
 }
 
 function moveNoteToFolder(noteId, folderPath) {
